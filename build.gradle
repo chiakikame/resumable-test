@@ -1,0 +1,26 @@
+group 'org.thousandturtles'
+version '1.0-SNAPSHOT'
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath "io.ratpack:ratpack-gradle:1.0.0"
+    }
+}
+
+apply plugin: "io.ratpack.ratpack-groovy"
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    compile 'org.slf4j:slf4j-simple:1.7.12'
+    compile 'org.codehaus.gpars:gpars:1.2.1'
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.6'
+}

@@ -1,0 +1,93 @@
+= Using `resumable.js` with `ratpack`
+
+To demonstrate how to use `resumable.js` in the client side and setting up a
+server to receive data from `resumable.js`, I created this MD5 calculating server.
+
+== Key points
+
+=== Implementation
+
+The server, implemented with `ratpack` framework, has 2 main handler, as you
+can see in `ratpack.groovy`.
+
+==== `/upload_handler`
+
+This pathway accepts `GET` and `POST` methods. `GET` is for chunk existence
+testing, and `POST` do the actually chunk storage and processing.
+
+In essence, a chunk is send to `PartContainingService` for storage and MD5
+calculation. After a file is finished, its MD5 will be calculated and send to
+`MD5DictService`.
+
+==== `/digest`
+
+A `GET` pathway for querying MD5 of a file by using `MD5DictService`
+
+==== Root
+
+Transfer default single-paged web application to the client.
+
+=== Bypass `maxContentLength` limit
+
+By using `resumable.js` and setting reasonable `chunkSize` while starting,
+we don't need to adjust `maxContentLength` of the server.
+
+For `ratpack`, it's simple:
+
+[code, groovy]
+----
+ratpack {
+    serverConfig {
+        maxContentLength(10 * 1024 * 1024)
+    }
+}
+----
+
+However, it might be your case that your boss don't want you messing up with
+the server (because they're ... Fill your reason :p), and `resumable.js` comes
+to rescue in this situation!
+
+=== Uploading interruption recovery
+
+What if the users are using crappy computer system or Internet service? Their
+uploading job will definitely broke when they're using your service. Luckily,
+`resumable.js` can ask server about uploaded chunks before actually uploading
+anything.
+
+If you implement `GET` handler in the uploading accepting handler, you can
+tell `resumable.js` whether a chunk was uploaded before, and the chunk can
+be safely skipped if server said yes.
+
+=== Limiting number of files uploaded at a time
+
+This may not be a feature in some cases (e.g. file storage cloud), however,
+in other cases you really need this feature.
+
+== Some issues
+
+It seems that `resumable.js` create unique file id by adding file size (in byte)
+in the head of the string, and then removing all unacceptable character in URI.
+
+This may cause problem in some rare cases. Consider the following case, in
+which the files are having the same size:
+
+----
+word-株式會社.adoc
+word-刑天.adoc
+word-Верный.adoc
+----
+
+In this case, the server may not be able to discriminate them and will send
+wrong signal about `word-刑天.adoc` is uploaded if you uploaded `word-株式會社.adoc`
+before.
+
+Thus, it may not be safe to use `uniqueIdentifier` as a key for identifying
+if a file is uploaded or not. And it will not be safe to save information about
+a file by using `uniqueIdentifier` as a *sole* key. Luckily, you can use other
+uniqueness of the file for this purpose on server side. (e.g. MD5, real file name)
+
+If you want to change how `uniqueIdentifier` is generated, set `generateUniqueIdentifier`
+parameter with your function while creating `Resumable` object in javascript.
+
+By the way, if you want to calculate MD5 in javascript (not recommended),
+consider googling for `cryptojs` and `FileReader` (part of FileAPI in javascript)
